@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect } from 'react';
-import styles from './WalletModal.module.css';
-
 const WalletModal = ({ isOpen, onClose, onSelect }) => {
   useEffect(() => {
     const handleEsc = (e) => {
