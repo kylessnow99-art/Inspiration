@@ -10,11 +10,13 @@
   },
   "dependencies": {
     "next": "16.1.6",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "@solana/web3.js": "^1.98.4",
-    "ethers": "^6.13.2",
-    "@walletconnect/web3-provider": "^1.8.0"
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "ethers": "6.16.0",
+    "@solana/web3.js": "1.98.4",
+    "@reown/appkit": "1.8.18",
+    "@reown/appkit-adapter-ethers": "1.8.18",
+    "@walletconnect/ethereum-provider": "2.23.6"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.20",
