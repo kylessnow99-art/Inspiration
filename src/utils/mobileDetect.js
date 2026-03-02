@@ -5,18 +5,20 @@ export const isMobileBrowser = () => {
 };
 
 export const openInWallet = (walletType, url) => {
-  const deepLinks = {
-    phantom: `phantom://browse?url=${encodeURIComponent(url)}`,
-    metamask: `metamask://dapp/${encodeURIComponent(url)}`,
-    trust: `trust://open?url=${encodeURIComponent(url)}`,
+  const universalLinks = {
+    phantom: `https://phantom.app/ul/browse/${encodeURIComponent(url)}`,
+    metamask: `https://metamask.app.link/dapp/${encodeURIComponent(url.replace(/^https?:\/\//, ''))}`,
+    trust: `https://link.trustwallet.com/open?url=${encodeURIComponent(url)}`,
     walletconnect: `wc:?uri=${encodeURIComponent(url)}`
   };
   
-  // Try deep link
-  window.location.href = deepLinks[walletType] || url;
+  // Try universal link first
+  window.location.href = universalLinks[walletType] || url;
   
-  // Fallback: open in new tab
+  // If still in browser after 2 seconds, show instructions
   setTimeout(() => {
-    window.open(url, '_blank');
-  }, 500);
+    if (document.visibilityState === 'visible') {
+      alert(`Please open ${walletType} app and browse to: ${url}`);
+    }
+  }, 2000);
 };
