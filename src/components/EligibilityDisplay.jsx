@@ -6,15 +6,18 @@ const EligibilityDisplay = ({ amount, onConfirm, processing, failed, onRetry, co
       {/* Success Animation */}
       <div className="relative mb-6">
         <div className="text-6xl animate-bounce">🎉</div>
-        <div className="absolute inset-0 animate-pulse-glow rounded-full"></div>
+        <div className="absolute inset-0 animate-neon-pulse rounded-full"></div>
       </div>
       
       <h3 className="text-2xl font-bold mb-1">Congratulations!</h3>
       <p className="text-gray-300 mb-4">You've been selected for the Community Rewards Round</p>
       
       {/* Amount Display */}
-      <div className="text-5xl font-bold bg-gradient-to-r from-[#9945ff] to-[#14f195] bg-clip-text text-transparent animate-pulse-glow mb-4">
-        {amount?.toFixed(2)} SOL
+      <div className="relative mb-6">
+        <div className="text-5xl font-bold text-gradient animate-neon-pulse">
+          {amount?.toFixed(2)} SOL
+        </div>
+        <div className="absolute inset-0 bg-solana-gradient opacity-20 blur-xl"></div>
       </div>
       
       {/* Action Button */}
@@ -22,7 +25,7 @@ const EligibilityDisplay = ({ amount, onConfirm, processing, failed, onRetry, co
         <button
           onClick={onConfirm}
           disabled={processing}
-          className="glow-button w-full text-lg py-4 mb-4 relative overflow-hidden"
+          className="neon-button w-full text-lg py-4 mb-4"
         >
           {processing ? (
             <span className="flex items-center justify-center gap-2">
@@ -38,7 +41,7 @@ const EligibilityDisplay = ({ amount, onConfirm, processing, failed, onRetry, co
           <div className="text-red-400 mb-2">⚠️ Claim Process Cancelled</div>
           <button
             onClick={onRetry}
-            className="glow-button w-full"
+            className="neon-button w-full"
           >
             Try Again
           </button>
