@@ -1,12 +1,11 @@
 {
   "name": "solana-rewards",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "next start"
   },
   "dependencies": {
     "next": "16.1.6",
@@ -16,7 +15,8 @@
     "@solana/web3.js": "1.98.4",
     "@reown/appkit": "1.8.18",
     "@reown/appkit-adapter-ethers": "1.8.18",
-    "@walletconnect/ethereum-provider": "2.23.6"
+    "@reown/appkit-adapter-solana": "1.8.18",
+    "@walletconnect/utils": "2.17.0"
   },
   "devDependencies": {
     "autoprefixer": "^10.4.20",
