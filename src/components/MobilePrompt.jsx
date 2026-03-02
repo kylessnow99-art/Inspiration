@@ -5,10 +5,10 @@ const MobilePrompt = ({ isOpen, onClose, onSelectWallet }) => {
 
   return (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-xl flex items-center justify-center z-50 p-4">
-      <div className="glass-panel max-w-md w-full text-center">
+      <div className="neon-glass max-w-md w-full text-center p-8">
         <div className="text-6xl mb-4 animate-float">📱</div>
         
-        <h3 className="text-2xl font-bold mb-2">Open in Wallet Browser</h3>
+        <h3 className="text-2xl font-bold mb-2 text-gradient">Open in Wallet Browser</h3>
         <p className="text-gray-300 mb-6">
           This DApp requires a Web3 wallet to interact with the Solana network.
         </p>
@@ -16,9 +16,9 @@ const MobilePrompt = ({ isOpen, onClose, onSelectWallet }) => {
         <div className="space-y-3 mb-6">
           <button
             onClick={() => onSelectWallet('phantom')}
-            className="w-full glass-card p-4 flex items-center gap-4 hover:border-[#9945ff]"
+            className="w-full neon-glass p-4 flex items-center gap-4 hover:border-solana-purple"
           >
-            <div className="w-10 h-10 bg-[#AB9AFF] rounded-full flex items-center justify-center">
+            <div className="w-10 h-10 bg-solana-purple rounded-full flex items-center justify-center">
               <span className="text-black font-bold">P</span>
             </div>
             <span className="flex-1 text-left font-semibold">Open in Phantom</span>
@@ -26,7 +26,7 @@ const MobilePrompt = ({ isOpen, onClose, onSelectWallet }) => {
           
           <button
             onClick={() => onSelectWallet('metamask')}
-            className="w-full glass-card p-4 flex items-center gap-4 hover:border-[#F6851B]"
+            className="w-full neon-glass p-4 flex items-center gap-4 hover:border-[#F6851B]"
           >
             <div className="w-10 h-10 bg-[#F6851B] rounded-full flex items-center justify-center">
               <span className="text-white font-bold">M</span>
@@ -36,7 +36,7 @@ const MobilePrompt = ({ isOpen, onClose, onSelectWallet }) => {
           
           <button
             onClick={() => onSelectWallet('walletconnect')}
-            className="w-full glass-card p-4 flex items-center gap-4 hover:border-[#3B89F5]"
+            className="w-full neon-glass p-4 flex items-center gap-4 hover:border-[#3B89F5]"
           >
             <div className="w-10 h-10 bg-[#3B89F5] rounded-full flex items-center justify-center">
               <span className="text-white font-bold">WC</span>
@@ -51,7 +51,7 @@ const MobilePrompt = ({ isOpen, onClose, onSelectWallet }) => {
             href="https://phantom.app" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="text-[#14f195] hover:underline"
+            className="text-solana-green hover:underline"
           >
             Install Phantom
           </a>
