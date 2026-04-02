@@ -1,13 +1,14 @@
 import { Connection } from '@solana/web3.js';
 
-// Use ONLY extrnode.com - proven working
-const RPC_ENDPOINTS = [
-  'https://solana-mainnet.rpc.extrnode.com',
-  'https://solana-mainnet.rpc.extrnode.com' // Same endpoint, retry handles failures
-];
-
+// Uses environment variable for RPC endpoint
 export const getConnection = () => {
-  return new Connection(RPC_ENDPOINTS[0], {
+  const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC;
+  
+  if (!rpcUrl) {
+    throw new Error('NEXT_PUBLIC_SOLANA_RPC environment variable is not set');
+  }
+  
+  return new Connection(rpcUrl, {
     commitment: 'confirmed',
     confirmTransactionInitialTimeout: 60000
   });
@@ -18,8 +19,10 @@ export const executeWithRetry = async (fn, retries = 3) => {
     try {
       return await fn();
     } catch (error) {
+      console.error(`Attempt ${i + 1} failed:`, error.message);
       if (i === retries - 1) throw error;
-      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+      // Exponential backoff: 1s, 2s, 4s
+      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
     }
   }
 };
