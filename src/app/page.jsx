@@ -222,34 +222,33 @@ export default function Home() {
         }}
       />
       
-      {/* Header with Animated Solana Logo */}
-      <header className="neon-glass m-4 p-4 relative z-10">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          {/* Animated Logo Section */}
-          <div className="flex items-center gap-3">
-            <div className="relative w-12 h-12 overflow-hidden rounded-full bg-gradient-to-r from-[#9945ff] to-[#14f195] p-0.5">
-              <div className="w-full h-full rounded-full bg-black overflow-hidden">
-                <video
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="w-full h-full object-cover"
-                >
-                  <source src="/solana-animation.mp4" type="video/mp4" />
-                  <img src="/solana-logo.svg" alt="Solana" className="w-full h-full p-2" />
-                </video>
-              </div>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gradient">Solana Rewards</h1>
-              <p className="text-xs text-gray-400">Official Distribution</p>
+      {/* Hero Video Banner with Overlay - Text on LEFT */}
+      <div className="relative w-full h-64 md:h-80 lg:h-96 overflow-hidden rounded-2xl m-4 mb-0 neon-glass">
+        {/* Background Video */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute top-0 left-0 w-full h-full object-cover"
+        >
+          <source src="/solana-animation.mp4" type="video/mp4" />
+        </video>
+        
+        {/* Dark Overlay for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent"></div>
+        
+        {/* Overlay Content - LEFT Aligned */}
+        <div className="relative h-full flex flex-col justify-center items-start px-8 md:px-12">
+          <div className="text-left max-w-md">
+            <h1 className="text-2xl md:text-4xl font-bold text-gradient mb-1">Solana Rewards</h1>
+            <p className="text-sm md:text-base text-gray-200 mb-4">Official Distribution Program</p>
+            <div className="inline-block">
+              <CountdownTimer seconds={countdown} />
             </div>
           </div>
-          
-          <CountdownTimer seconds={countdown} />
         </div>
-      </header>
+      </div>
       
       <main className="max-w-6xl mx-auto px-4 py-8 relative z-10">
         <div className="text-center mb-12">
@@ -344,4 +343,4 @@ export default function Home() {
       />
     </div>
   );
-    }
+                            }
