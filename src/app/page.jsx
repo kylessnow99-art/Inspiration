@@ -16,10 +16,10 @@ import StatsDisplay from '@/components/StatsDisplay';
 import TrustBadges from '@/components/TrustBadges';
 import HowItWorks from '@/components/HowItWorks';
 
-// Lottie animations
-import chestClosed from '@/public/animations/chest-closed.json';
-import chestEmpty from '@/public/animations/chest-empty.json';
-import chestRewards from '@/public/animations/chest-rewards.json';
+// Lottie animations - using absolute path from public folder
+import chestClosed from '/animations/chest-closed.json';
+import chestEmpty from '/animations/chest-empty.json';
+import chestRewards from '/animations/chest-rewards.json';
 
 const INITIAL_STATS = {
   distributed: 1784,
@@ -424,4 +424,4 @@ export default function Home() {
       />
     </div>
   );
-         }
+    }
