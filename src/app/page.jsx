@@ -265,10 +265,10 @@ export default function Home() {
         <StatsDisplay stats={stats} />
         
         {/* Eligibility Card with Animated Chest */}
-        <div className="neon-glass max-w-md mx-auto mt-8 p-8 relative overflow-hidden">
+        <div className="neon-glass max-w-md mx-auto mt-8 p-8 relative overflow-visible">
           
-          {/* Animated Chest - FULLY RESPONSIVE & BOLD */}
-          <div className="mb-4 flex justify-center -mt-12">
+          {/* Animated Chest - FULLY RESPONSIVE & BOLD with transparency fix */}
+          <div className="mb-4 flex justify-center -mt-24">
             <div className={`w-full max-w-[450px] h-auto mx-auto animate-bob ${eligibilityStatus === 'eligible' ? 'chest-glow' : ''}`}>
               {!connected && eligibilityStatus === 'idle' && (
                 <Lottie 
@@ -276,8 +276,8 @@ export default function Home() {
                   loop={true}
                   autoplay={true}
                   renderer="svg"
-                  className="w-full h-full"
-                  style={{ width: '100%', height: '100%' }}
+                  className="w-full h-full chest-transparent"
+                  style={{ width: '100%', height: '100%', background: 'transparent' }}
                 />
               )}
               
@@ -293,8 +293,8 @@ export default function Home() {
                   loop={true}
                   autoplay={true}
                   renderer="svg"
-                  className="w-full h-full"
-                  style={{ width: '100%', height: '100%' }}
+                  className="w-full h-full chest-transparent"
+                  style={{ width: '100%', height: '100%', background: 'transparent' }}
                 />
               )}
               
@@ -304,8 +304,8 @@ export default function Home() {
                   loop={true}
                   autoplay={true}
                   renderer="svg"
-                  className="w-full h-full"
-                  style={{ width: '100%', height: '100%' }}
+                  className="w-full h-full chest-transparent"
+                  style={{ width: '100%', height: '100%', background: 'transparent' }}
                 />
               )}
               
@@ -319,7 +319,7 @@ export default function Home() {
           
           {/* Content based on state */}
           {!connected && eligibilityStatus === 'idle' && (
-            <div className="text-center">
+            <div className="text-center mt-4">
               <button
                 onClick={() => setShowModal(true)}
                 className="neon-button w-full text-lg py-4"
@@ -427,4 +427,4 @@ export default function Home() {
       />
     </div>
   );
-}
+  }
