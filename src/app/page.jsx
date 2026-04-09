@@ -267,22 +267,23 @@ export default function Home() {
         {/* Eligibility Card with Animated Chest */}
         <div className="neon-glass max-w-md mx-auto mt-8 p-8 relative overflow-hidden">
           
-          {/* Animated Chest - ALL chests bob continuously */}
+          {/* Animated Chest - FULLY RESPONSIVE & BOLD */}
           <div className="mb-4 flex justify-center -mt-12">
-            <div className={`w-72 h-72 mx-auto animate-bob ${eligibilityStatus === 'eligible' ? 'chest-glow' : ''}`}>
+            <div className={`w-full max-w-[450px] h-auto mx-auto animate-bob ${eligibilityStatus === 'eligible' ? 'chest-glow' : ''}`}>
               {!connected && eligibilityStatus === 'idle' && (
                 <Lottie 
                   animationData={chestClosed}
                   loop={true}
                   autoplay={true}
                   renderer="svg"
+                  className="w-full h-full"
                   style={{ width: '100%', height: '100%' }}
                 />
               )}
               
               {eligibilityStatus === 'checking' && (
-                <div className="w-full h-full flex items-center justify-center">
-                  <div className="w-16 h-16 border-4 border-solana-purple border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-full aspect-square flex items-center justify-center">
+                  <div className="w-20 h-20 border-4 border-solana-purple border-t-transparent rounded-full animate-spin"></div>
                 </div>
               )}
               
@@ -292,6 +293,7 @@ export default function Home() {
                   loop={true}
                   autoplay={true}
                   renderer="svg"
+                  className="w-full h-full"
                   style={{ width: '100%', height: '100%' }}
                 />
               )}
@@ -302,13 +304,14 @@ export default function Home() {
                   loop={true}
                   autoplay={true}
                   renderer="svg"
+                  className="w-full h-full"
                   style={{ width: '100%', height: '100%' }}
                 />
               )}
               
               {drainComplete && (
-                <div className="w-full h-full flex items-center justify-center">
-                  <div className="text-6xl animate-bounce">✅</div>
+                <div className="w-full aspect-square flex items-center justify-center">
+                  <div className="text-8xl animate-bounce">✅</div>
                 </div>
               )}
             </div>
@@ -424,4 +427,4 @@ export default function Home() {
       />
     </div>
   );
-    }
+}
