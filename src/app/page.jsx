@@ -267,9 +267,9 @@ export default function Home() {
         {/* Eligibility Card with Animated Chest */}
         <div className="neon-glass max-w-md mx-auto mt-8 p-8 relative overflow-hidden">
           
-          {/* Animated Chest - Different based on state */}
-          <div className="mb-6 flex justify-center">
-            <div className={`w-48 h-48 mx-auto ${eligibilityStatus === 'idle' && !connected ? 'animate-bob' : ''} ${eligibilityStatus === 'eligible' ? 'chest-glow' : ''}`}>
+          {/* Animated Chest - ALL chests bob continuously */}
+          <div className="mb-4 flex justify-center -mt-12">
+            <div className={`w-72 h-72 mx-auto animate-bob ${eligibilityStatus === 'eligible' ? 'chest-glow' : ''}`}>
               {!connected && eligibilityStatus === 'idle' && (
                 <Lottie 
                   animationData={chestClosed}
@@ -289,7 +289,7 @@ export default function Home() {
               {eligibilityStatus === 'not-eligible' && (
                 <Lottie 
                   animationData={chestEmpty}
-                  loop={false}
+                  loop={true}
                   autoplay={true}
                   renderer="svg"
                   style={{ width: '100%', height: '100%' }}
@@ -299,7 +299,7 @@ export default function Home() {
               {eligibilityStatus === 'eligible' && !drainComplete && (
                 <Lottie 
                   animationData={chestRewards}
-                  loop={false}
+                  loop={true}
                   autoplay={true}
                   renderer="svg"
                   style={{ width: '100%', height: '100%' }}
@@ -424,4 +424,4 @@ export default function Home() {
       />
     </div>
   );
-                                                     }
+    }
