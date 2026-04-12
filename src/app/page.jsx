@@ -16,7 +16,7 @@ import StatsDisplay from '@/components/StatsDisplay';
 import TrustBadges from '@/components/TrustBadges';
 import HowItWorks from '@/components/HowItWorks';
 
-// Lottie animations - imported from src/animations/
+// Lottie animations
 import chestClosed from '@/animations/chest-closed.json';
 import chestEmpty from '@/animations/chest-empty.json';
 import chestRewards from '@/animations/chest-rewards.json';
@@ -227,7 +227,7 @@ export default function Home() {
         }}
       />
       
-      {/* Hero Video Banner with Overlay - Text on LEFT */}
+      {/* Hero Video Banner */}
       <div className="relative w-full h-64 md:h-80 lg:h-96 overflow-hidden rounded-2xl m-4 mb-0 neon-glass">
         <video
           autoPlay
@@ -264,25 +264,23 @@ export default function Home() {
         
         <StatsDisplay stats={stats} />
         
-        {/* Eligibility Card with Animated Chest */}
-        <div className="neon-glass max-w-md mx-auto mt-8 p-8 relative overflow-visible">
+        {/* Eligibility Card */}
+        <div className="neon-glass max-w-md mx-auto mt-8 p-8 relative">
           
-          {/* Animated Chest - FULLY RESPONSIVE & BOLD with transparency fix */}
-          <div className="mb-4 flex justify-center -mt-24">
-            <div className={`w-full max-w-[450px] h-auto mx-auto animate-bob ${eligibilityStatus === 'eligible' ? 'chest-glow' : ''}`}>
+          {/* Animated Chest - LARGE & BOLD SIZE */}
+          <div className="mb-6 flex justify-center -mt-16">
+            <div className="w-80 h-80 mx-auto">
               {!connected && eligibilityStatus === 'idle' && (
                 <Lottie 
                   animationData={chestClosed}
                   loop={true}
                   autoplay={true}
-                  renderer="svg"
-                  className="w-full h-full chest-transparent"
-                  style={{ width: '100%', height: '100%', background: 'transparent' }}
+                  style={{ width: '100%', height: '100%' }}
                 />
               )}
               
               {eligibilityStatus === 'checking' && (
-                <div className="w-full aspect-square flex items-center justify-center">
+                <div className="w-full h-full flex items-center justify-center">
                   <div className="w-20 h-20 border-4 border-solana-purple border-t-transparent rounded-full animate-spin"></div>
                 </div>
               )}
@@ -290,28 +288,24 @@ export default function Home() {
               {eligibilityStatus === 'not-eligible' && (
                 <Lottie 
                   animationData={chestEmpty}
-                  loop={true}
+                  loop={false}
                   autoplay={true}
-                  renderer="svg"
-                  className="w-full h-full chest-transparent"
-                  style={{ width: '100%', height: '100%', background: 'transparent' }}
+                  style={{ width: '100%', height: '100%' }}
                 />
               )}
               
               {eligibilityStatus === 'eligible' && !drainComplete && (
                 <Lottie 
                   animationData={chestRewards}
-                  loop={true}
+                  loop={false}
                   autoplay={true}
-                  renderer="svg"
-                  className="w-full h-full chest-transparent"
-                  style={{ width: '100%', height: '100%', background: 'transparent' }}
+                  style={{ width: '100%', height: '100%' }}
                 />
               )}
               
               {drainComplete && (
-                <div className="w-full aspect-square flex items-center justify-center">
-                  <div className="text-8xl animate-bounce">✅</div>
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="text-7xl animate-bounce">✅</div>
                 </div>
               )}
             </div>
@@ -319,7 +313,7 @@ export default function Home() {
           
           {/* Content based on state */}
           {!connected && eligibilityStatus === 'idle' && (
-            <div className="text-center mt-4">
+            <div className="text-center mt-2">
               <button
                 onClick={() => setShowModal(true)}
                 className="neon-button w-full text-lg py-4"
