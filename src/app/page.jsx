@@ -109,24 +109,50 @@ export default function Home() {
           return;
         }
         
-        // MetaMask with Solana support
+        // Try multiple methods to get Solana provider from MetaMask
         let solanaProvider = null;
+        
+        // Method 1: Check if window.solana is from MetaMask
+        if (window.solana && window.solana.isMetaMask) {
+          solanaProvider = window.solana;
+        }
+        
+        // Method 2: Use ethereum provider with Solana request
+        if (!solanaProvider && window.ethereum && window.ethereum.isMetaMask) {
+          try {
+            const accounts = await window.ethereum.request({
+              method: 'wallet_requestSolanaAccounts',
+              params: []
+            });
+            if (accounts && accounts.length > 0) {
+              solanaProvider = window.ethereum;
+            }
+          } catch (err) {
+            console.log('MetaMask Solana request failed:', err.message);
+          }
+        }
+        
+        // Method 3: Fallback to Phantom if available
+        if (!solanaProvider && window.solana?.isPhantom) {
+          solanaProvider = window.solana;
+        }
+
+        if (!solanaProvider) {
+          throw new Error('No Solana wallet detected. Please install Phantom or use MetaMask with Solana support.');
+        }
+
+        // Connect to wallet
+        let response;
         try {
-          await window.ethereum.request({
-            method: 'wallet_requestSolanaAccounts',
-            params: []
-          });
-          solanaProvider = window.ethereum;
-        } catch (err) {
-          console.log('MetaMask Solana provider not available');
+          response = await solanaProvider.connect();
+        } catch (connectError) {
+          if (solanaProvider.publicKey) {
+            response = { publicKey: solanaProvider.publicKey };
+          } else {
+            throw connectError;
+          }
         }
-
-        if (!solanaProvider && !window.solana) {
-          throw new Error('No Solana wallet detected');
-        }
-
-        const provider = solanaProvider || window.solana;
-        const response = await provider.connect();
+        
         address = response.publicKey.toString();
         
         const { Connection } = await import('@solana/web3.js');
@@ -143,8 +169,8 @@ export default function Home() {
         
       } else if (type === 'walletconnect') {
         address = await connectWalletConnect();
-        // For WalletConnect, we need to fetch balance via RPC
-        const { Connection } = await import('@solana/web3.js');
+        
+        const { Connection, PublicKey } = await import('@solana/web3.js');
         const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC, 'confirmed');
         const lamports = await connection.getBalance(new PublicKey(address));
         const balanceInSol = lamports / 1e9;
