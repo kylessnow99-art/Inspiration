@@ -124,7 +124,7 @@ body::before {
   background-clip: text;
 }
 
-/* ========== STATS CARD STYLES (FIXED) ========== */
+/* ========== STATS CARD STYLES ========== */
 .stat-card {
   background: rgba(10, 11, 45, 0.3);
   backdrop-filter: blur(12px);
