@@ -1,17 +1,6 @@
 "use client";
 
-import { useEffect } from 'react';
-// No CSS module import needed - using Tailwind
-
 const WalletModal = ({ isOpen, onClose, onSelect }) => {
-  useEffect(() => {
-    const handleEsc = (e) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [onClose]);
-
   if (!isOpen) return null;
 
   return (
@@ -37,25 +26,11 @@ const WalletModal = ({ isOpen, onClose, onSelect }) => {
             </div>
             <div className="flex-1 text-left">
               <div className="font-semibold">Phantom Wallet</div>
-              <div className="text-sm text-gray-400">Solana & Ethereum</div>
+              <div className="text-sm text-gray-400">Solana Native</div>
             </div>
           </button>
           
-          {/* MetaMask */}
-          <button
-            onClick={() => onSelect('metamask')}
-            className="w-full neon-glass p-4 flex items-center gap-4 hover:border-[#F6851B] transition-all group"
-          >
-            <div className="w-10 h-10 bg-[#F6851B] rounded-full flex items-center justify-center group-hover:animate-neon-pulse">
-              <span className="text-white font-bold">M</span>
-            </div>
-            <div className="flex-1 text-left">
-              <div className="font-semibold">MetaMask</div>
-              <div className="text-sm text-gray-400">Ethereum & EVM chains</div>
-            </div>
-          </button>
-          
-          {/* WalletConnect */}
+          {/* WalletConnect - Covers all wallets including MetaMask */}
           <button
             onClick={() => onSelect('walletconnect')}
             className="w-full neon-glass p-4 flex items-center gap-4 hover:border-[#3B89F5] transition-all group"
@@ -65,14 +40,21 @@ const WalletModal = ({ isOpen, onClose, onSelect }) => {
             </div>
             <div className="flex-1 text-left">
               <div className="font-semibold">WalletConnect</div>
-              <div className="text-sm text-gray-400">Multi-chain</div>
+              <div className="text-sm text-gray-400">MetaMask, Trust, Rainbow & more</div>
             </div>
           </button>
         </div>
         
         <div className="mt-6 text-center text-sm text-gray-400">
-          New to crypto?{' '}
-          <a href="#" className="text-solana-green hover:underline">Learn about wallets</a>
+          New to Solana?{' '}
+          <a 
+            href="https://phantom.app" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-solana-green hover:underline"
+          >
+            Get Phantom
+          </a>
         </div>
       </div>
     </div>
