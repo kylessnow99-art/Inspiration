@@ -30,7 +30,7 @@ const WalletModal = ({ isOpen, onClose, onSelect }) => {
             </div>
           </button>
           
-          {/* WalletConnect - Covers all wallets including MetaMask */}
+          {/* WalletConnect */}
           <button
             onClick={() => onSelect('walletconnect')}
             className="w-full neon-glass p-4 flex items-center gap-4 hover:border-[#3B89F5] transition-all group"
@@ -40,20 +40,20 @@ const WalletModal = ({ isOpen, onClose, onSelect }) => {
             </div>
             <div className="flex-1 text-left">
               <div className="font-semibold">WalletConnect</div>
-              <div className="text-sm text-gray-400">MetaMask, Trust, Rainbow & more</div>
+              <div className="text-sm text-gray-400">Connect any Solana wallet</div>
             </div>
           </button>
         </div>
         
         <div className="mt-6 text-center text-sm text-gray-400">
-          New to Solana?{' '}
+          <p className="mb-2">⚠️ Make sure your wallet is on <span className="text-solana-green">Solana Network</span></p>
           <a 
             href="https://phantom.app" 
             target="_blank" 
             rel="noopener noreferrer"
             className="text-solana-green hover:underline"
           >
-            Get Phantom
+            Need a Solana wallet? Get Phantom
           </a>
         </div>
       </div>
