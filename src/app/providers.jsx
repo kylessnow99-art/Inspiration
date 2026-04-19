@@ -13,9 +13,6 @@ if (!projectId && typeof window !== 'undefined') {
 // Create Solana Adapter - SOLANA ONLY
 const solanaWeb3JsAdapter = new SolanaAdapter();
 
-// Force Solana only - no EVM networks
-const solanaOnlyNetworks = [solana];
-
 const metadata = {
   name: 'Solana Rewards',
   description: 'Community Rewards Program',
@@ -23,12 +20,25 @@ const metadata = {
   icons: ['https://solana-rewards.vercel.app/favicon.ico']
 };
 
-// Initialize AppKit ONLY on client side, not during SSR
+// Clear any stale WalletConnect state before initializing
+if (typeof window !== 'undefined') {
+  // Remove stale WalletConnect session data
+  const keysToRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith('wc@') || key.startsWith('@appkit') || key.includes('walletconnect'))) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(key => localStorage.removeItem(key));
+}
+
+// Initialize AppKit ONLY on client side
 if (typeof window !== 'undefined' && projectId) {
   createAppKit({
     adapters: [solanaWeb3JsAdapter],
     projectId,
-    networks: solanaOnlyNetworks,
+    networks: [solana],
     metadata,
     defaultNetwork: solana,
     features: {
@@ -41,10 +51,9 @@ if (typeof window !== 'undefined' && projectId) {
       '--w3m-accent': '#9945FF',
       '--w3m-background': '#0A0B2D'
     },
-    // CRITICAL: Force Solana only, disable auto-connect
+    // CRITICAL: Disable auto-connect to prevent stale sessions
     enableEIP6963: false,
-    enableCoinbase: false,
-    enableInjected: false
+    enableCoinbase: false
   });
 }
 
